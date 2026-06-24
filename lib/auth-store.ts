@@ -1,20 +1,23 @@
-import { signOutServer } from "@/app/actions/auth";
 import { createUserProfile } from "@/app/actions/user-profile";
-import { fetchUserProfileByAuthId } from "@/app/actions/user-profile";
+import { getSessionState } from "@/app/actions/user-session";
+import { signOutServer } from "@/app/actions/auth";
 import { AUTH_CHANGED_EVENT, emitDataEvent } from "./events";
 import {
   clearProfileCache,
   getProfile,
   setProfileCache,
 } from "./session";
+import { buildKakaoAuthorizeUrl, isKakaoConfigured } from "./kakao-oauth";
 import {
-  createBrowserSupabaseClient,
-  resetBrowserSupabaseClient,
-} from "./supabase/browser";
+  clearUserIdFromStorage,
+  readUserIdFromStorage,
+  writeUserIdToStorage,
+} from "./user-session";
 import {
   USER_COLUMNS,
   USERS_TABLE,
 } from "./supabase/users-schema";
+import { getSupabase } from "./supabase/client";
 
 export type FormatValidationResult =
   | { ok: true; nickname: string }
@@ -50,7 +53,7 @@ export function getLoggedInNickname(): string {
 }
 
 export function getLoggedInUserId(): string {
-  return getProfile()?.userId ?? "";
+  return getProfile()?.userId ?? readUserIdFromStorage();
 }
 
 export function isProfileComplete(): boolean {
@@ -59,6 +62,7 @@ export function isProfileComplete(): boolean {
 
 function applyProfile(userId: string, nickname: string): ProfileValidationResult {
   const cached = getProfile();
+  writeUserIdToStorage(userId);
   setProfileCache({ userId, nickname });
 
   if (cached?.userId !== userId || cached?.nickname !== nickname) {
@@ -68,88 +72,60 @@ function applyProfile(userId: string, nickname: string): ProfileValidationResult
   return { ok: true, nickname, userId };
 }
 
-/** Supabase Auth 세션 + users 프로필 동기화 (이벤트는 상태 변경 시에만) */
+/** 쿠키 + localStorage 기반 세션 동기화 */
 export async function syncAuthProfile(): Promise<{
   authenticated: boolean;
   hasProfile: boolean;
 }> {
-  const supabase = createBrowserSupabaseClient();
-  const {
-    data: { session },
-  } = await supabase.auth.getSession();
-
+  const state = await getSessionState();
   const cached = getProfile();
 
-  if (!session?.user) {
-    const hadCache = cached !== null;
+  if (!state.authenticated) {
+    const hadCache = cached !== null || readUserIdFromStorage().length > 0;
     clearProfileCache();
+    clearUserIdFromStorage();
     if (hadCache) {
       emitDataEvent(AUTH_CHANGED_EVENT);
     }
     return { authenticated: false, hasProfile: false };
   }
 
-  const result = await fetchUserProfileByAuthId(session.user.id);
-  if (!result.ok) {
-    const hadCache = cached !== null;
+  writeUserIdToStorage(state.userId);
+
+  if (!state.hasProfile) {
+    const hadFullProfile = cached !== null;
     clearProfileCache();
-    if (hadCache) {
+    if (hadFullProfile) {
       emitDataEvent(AUTH_CHANGED_EVENT);
     }
     return { authenticated: true, hasProfile: false };
   }
 
   if (
-    cached?.userId === result.userId &&
-    cached?.nickname === result.nickname
+    cached?.userId === state.userId &&
+    cached?.nickname === state.nickname
   ) {
     return { authenticated: true, hasProfile: true };
   }
 
-  applyProfile(result.userId, result.nickname);
+  applyProfile(state.userId, state.nickname);
   return { authenticated: true, hasProfile: true };
 }
 
-export async function signInWithKakao(): Promise<{ ok: true } | { ok: false; error: string }> {
-  const supabase = createBrowserSupabaseClient();
-  const redirectTo = `${window.location.origin}/auth/callback`;
-
-  const { error } = await supabase.auth.signInWithOAuth({
-    provider: "kakao",
-    options: { redirectTo },
-  });
-
-  if (error) {
-    return { ok: false, error: error.message };
+/** 카카오 인증 URL로 직접 이동 (scope 없음) */
+export function signInWithKakao(): { ok: true } | { ok: false; error: string } {
+  if (!isKakaoConfigured()) {
+    return { ok: false, error: "Kakao API key가 설정되지 않았습니다." };
   }
 
+  const url = buildKakaoAuthorizeUrl(window.location.origin);
+  window.location.assign(url);
   return { ok: true };
 }
 
-/** 브라우저 저장소 + 레거시 닉네임 입장 흔적 제거 */
-function clearLegacyAuthStorage(): void {
-  if (typeof window === "undefined") return;
-
-  try {
-    localStorage.clear();
-    sessionStorage.clear();
-  } catch {
-    // private mode 등에서 실패할 수 있음
-  }
-}
-
 export async function signOut(): Promise<void> {
-  const supabase = createBrowserSupabaseClient();
-
-  try {
-    await supabase.auth.signOut({ scope: "global" });
-  } catch {
-    // 세션 없음 등
-  }
-
   clearProfileCache();
-  clearLegacyAuthStorage();
-  resetBrowserSupabaseClient();
+  clearUserIdFromStorage();
 
   try {
     await signOutServer();
@@ -160,7 +136,7 @@ export async function signOut(): Promise<void> {
   emitDataEvent(AUTH_CHANGED_EVENT);
 }
 
-/** 카카오 로그인 후 최초 닉네임 설정 */
+/** Kakao 로그인 후 최초 닉네임 설정 */
 export async function registerNickname(
   input: string,
 ): Promise<ProfileValidationResult> {
@@ -176,10 +152,11 @@ export async function registerNickname(
 }
 
 export async function getParticipantCount(): Promise<number> {
-  const supabase = createBrowserSupabaseClient();
+  const supabase = getSupabase();
   const { count, error } = await supabase
     .from(USERS_TABLE)
-    .select(USER_COLUMNS.id, { count: "exact", head: true });
+    .select(USER_COLUMNS.id, { count: "exact", head: true })
+    .not(USER_COLUMNS.nickname, "is", null);
 
   if (error) return 0;
   return count ?? 0;

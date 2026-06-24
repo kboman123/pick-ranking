@@ -3,7 +3,8 @@ export type PickOutcome = "home" | "away";
 
 export type DbUser = {
   id: string;
-  nickname: string;
+  kakao_id: string | null;
+  nickname: string | null;
   created_at: string;
 };
 
@@ -55,12 +56,14 @@ export type Database = {
       users: {
         Row: DbUser;
         Insert: {
-          id: string;
-          nickname: string;
+          id?: string;
+          kakao_id?: string | null;
+          nickname?: string | null;
           created_at?: string;
         };
         Update: {
-          nickname?: string;
+          kakao_id?: string | null;
+          nickname?: string | null;
         };
         Relationships: [];
       };

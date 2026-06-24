@@ -1,18 +1,22 @@
 "use server";
 
-import { createServerSupabaseClient } from "@/lib/supabase/server-ssr";
+import { readUserIdCookie } from "@/app/actions/user-session";
 import { getSupabaseTableErrorMessage } from "@/lib/supabase/errors";
 import { getSupabaseServer } from "@/lib/supabase/server-admin";
 import {
   USER_COLUMNS,
   USER_SELECT,
   USERS_TABLE,
-  toUserInsert,
+  toKakaoUserInsert,
   type UserRow,
 } from "@/lib/supabase/users-schema";
 
 export type ProfileActionResult =
   | { ok: true; userId: string; nickname: string }
+  | { ok: false; error: string };
+
+export type UserLookupResult =
+  | { ok: true; userId: string; kakaoId: string; nickname: string | null }
   | { ok: false; error: string };
 
 async function findUserByNickname(
@@ -40,10 +44,22 @@ async function findUserByNickname(
   return { data, error: null };
 }
 
-/** Auth user id로 users 프로필 조회 */
-export async function fetchUserProfileByAuthId(
-  authUserId: string,
-): Promise<ProfileActionResult> {
+function toLookup(row: UserRow): UserLookupResult {
+  if (!row.kakao_id) {
+    return { ok: false, error: "INVALID_USER_ROW" };
+  }
+
+  return {
+    ok: true,
+    userId: row.id,
+    kakaoId: row.kakao_id,
+    nickname: row.nickname,
+  };
+}
+
+export async function fetchUserById(
+  userId: string,
+): Promise<UserLookupResult> {
   const supabase = getSupabaseServer();
   if (!supabase) {
     return { ok: false, error: "Supabase 서버 설정이 없습니다." };
@@ -52,7 +68,7 @@ export async function fetchUserProfileByAuthId(
   const { data, error } = await supabase
     .from(USERS_TABLE)
     .select(USER_SELECT)
-    .eq(USER_COLUMNS.id, authUserId)
+    .eq(USER_COLUMNS.id, userId)
     .maybeSingle();
 
   if (error) {
@@ -64,38 +80,100 @@ export async function fetchUserProfileByAuthId(
   }
 
   if (!data) {
-    return { ok: false, error: "PROFILE_NOT_FOUND" };
+    return { ok: false, error: "USER_NOT_FOUND" };
   }
 
-  return { ok: true, userId: data.id, nickname: data.nickname };
+  return toLookup(data);
 }
 
-/** 카카오 로그인 후 최초 닉네임 등록 (auth user id = users.id) */
+export async function fetchUserByKakaoId(
+  kakaoId: string,
+): Promise<UserLookupResult> {
+  const supabase = getSupabaseServer();
+  if (!supabase) {
+    return { ok: false, error: "Supabase 서버 설정이 없습니다." };
+  }
+
+  const { data, error } = await supabase
+    .from(USERS_TABLE)
+    .select(USER_SELECT)
+    .eq(USER_COLUMNS.kakao_id, kakaoId)
+    .maybeSingle();
+
+  if (error) {
+    return {
+      ok: false,
+      error:
+        getSupabaseTableErrorMessage(error, USERS_TABLE) ?? error.message,
+    };
+  }
+
+  if (!data) {
+    return { ok: false, error: "USER_NOT_FOUND" };
+  }
+
+  return toLookup(data);
+}
+
+export async function upsertUserByKakaoId(
+  kakaoId: string,
+): Promise<UserLookupResult> {
+  const supabase = getSupabaseServer();
+  if (!supabase) {
+    return { ok: false, error: "Supabase 서버 설정이 없습니다." };
+  }
+
+  const { data, error } = await supabase
+    .from(USERS_TABLE)
+    .insert(toKakaoUserInsert(kakaoId))
+    .select(USER_SELECT)
+    .single();
+
+  if (error) {
+    if (error.code === "23505") {
+      const existing = await fetchUserByKakaoId(kakaoId);
+      if (existing.ok) return existing;
+    }
+
+    return {
+      ok: false,
+      error:
+        getSupabaseTableErrorMessage(error, USERS_TABLE) ?? error.message,
+    };
+  }
+
+  return toLookup(data);
+}
+
+/** Kakao 로그인 후 최초 닉네임 등록 (쿠키 user_id 기준) */
 export async function createUserProfile(
   nickname: string,
 ): Promise<ProfileActionResult> {
-  const supabase = await createServerSupabaseClient();
-  const {
-    data: { user },
-    error: authError,
-  } = await supabase.auth.getUser();
-
-  if (authError || !user) {
+  const userId = await readUserIdCookie();
+  if (!userId) {
     return { ok: false, error: "로그인이 필요합니다." };
   }
 
   const trimmed = nickname.trim();
+  const current = await fetchUserById(userId);
 
-  const existingProfile = await fetchUserProfileByAuthId(user.id);
-  if (existingProfile.ok) {
-    return existingProfile;
+  if (!current.ok) {
+    return { ok: false, error: "사용자 정보를 찾을 수 없습니다." };
+  }
+
+  if (current.nickname && current.nickname.trim().length > 0) {
+    return {
+      ok: true,
+      userId: current.userId,
+      nickname: current.nickname,
+    };
   }
 
   const nicknameTaken = await findUserByNickname(trimmed);
   if (nicknameTaken.error) {
     return { ok: false, error: nicknameTaken.error };
   }
-  if (nicknameTaken.data && nicknameTaken.data.id !== user.id) {
+  if (nicknameTaken.data && nicknameTaken.data.id !== userId) {
     return { ok: false, error: "이미 사용 중인 닉네임입니다." };
   }
 
@@ -104,31 +182,40 @@ export async function createUserProfile(
     return { ok: false, error: "Supabase 서버 설정이 없습니다." };
   }
 
-  const { data: created, error: insertError } = await db
+  const { data: updated, error: updateError } = await db
     .from(USERS_TABLE)
-    .insert(toUserInsert(user.id, trimmed))
+    .update({ [USER_COLUMNS.nickname]: trimmed })
+    .eq(USER_COLUMNS.id, userId)
+    .is(USER_COLUMNS.nickname, null)
     .select(USER_SELECT)
-    .single();
+    .maybeSingle();
 
-  if (!insertError && created) {
+  if (!updateError && updated?.nickname) {
     return {
       ok: true,
-      userId: created.id,
-      nickname: created.nickname,
+      userId: updated.id,
+      nickname: updated.nickname,
     };
   }
 
-  if (insertError?.code === "23505") {
-    const raced = await fetchUserProfileByAuthId(user.id);
-    if (raced.ok) return raced;
+  if (updateError?.code === "23505") {
     return { ok: false, error: "이미 사용 중인 닉네임입니다." };
+  }
+
+  const raced = await fetchUserById(userId);
+  if (raced.ok && raced.nickname) {
+    return {
+      ok: true,
+      userId: raced.userId,
+      nickname: raced.nickname,
+    };
   }
 
   return {
     ok: false,
     error:
-      getSupabaseTableErrorMessage(insertError, USERS_TABLE) ??
-      insertError?.message ??
+      getSupabaseTableErrorMessage(updateError, USERS_TABLE) ??
+      updateError?.message ??
       "닉네임 등록에 실패했습니다.",
   };
 }

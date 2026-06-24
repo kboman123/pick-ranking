@@ -4,7 +4,7 @@ type LoginScreenProps = {
   variant?: "overlay" | "page";
 };
 
-/** 카카오 로그인 — Supabase signInWithOAuth → /auth/callback */
+/** 카카오 로그인 — 직접 OAuth → /auth/kakao/callback */
 export default function LoginScreen({ variant = "overlay" }: LoginScreenProps) {
   async function handleKakaoLogin() {
     const { signInWithKakao } = await import("@/lib/auth-store");

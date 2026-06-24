@@ -28,7 +28,7 @@ export async function fetchRanking(
   return computeRanking(
     (usersResult.data ?? []).map((user) => ({
       id: user[USER_COLUMNS.id],
-      nickname: user[USER_COLUMNS.nickname],
+      nickname: user[USER_COLUMNS.nickname] ?? "",
     })),
     gamesResult.data ?? [],
     predictionsResult.data ?? [],

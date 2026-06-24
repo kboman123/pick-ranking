@@ -31,23 +31,30 @@ EXCEPTION
 END $$;
 
 -- -----------------------------------------------------------------------------
--- 2. users — Supabase Auth user id + nickname
+-- 2. users — Kakao kakao_id + nickname
 -- -----------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS public.users (
-  id uuid PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
-  nickname text NOT NULL,
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  kakao_id text,
+  nickname text,
   created_at timestamptz NOT NULL DEFAULT now(),
 
   CONSTRAINT users_nickname_format CHECK (
-    char_length(nickname) BETWEEN 2 AND 12
-    AND nickname = btrim(nickname)
-    AND nickname !~ '\s'
+    nickname IS NULL OR (
+      char_length(nickname) BETWEEN 2 AND 12
+      AND nickname = btrim(nickname)
+      AND nickname !~ '\s'
+    )
   )
 );
 
-COMMENT ON TABLE public.users IS 'Supabase Auth user id + 표시용 nickname';
-COMMENT ON COLUMN public.users.id IS 'auth.users.id 와 동일';
-COMMENT ON COLUMN public.users.nickname IS '2~12자, 공백 불가. lower() 유니크로 중복 방지';
+COMMENT ON TABLE public.users IS 'Kakao kakao_id + 표시용 nickname';
+COMMENT ON COLUMN public.users.id IS '앱 내부 uuid (predictions.user_id)';
+COMMENT ON COLUMN public.users.kakao_id IS 'Kakao numeric user id (unique)';
+
+CREATE UNIQUE INDEX IF NOT EXISTS users_kakao_id_unique
+  ON public.users (kakao_id)
+  WHERE kakao_id IS NOT NULL;
 
 CREATE UNIQUE INDEX IF NOT EXISTS users_nickname_lower_unique
   ON public.users (lower(nickname));

@@ -11,7 +11,6 @@ import {
 import { AUTH_CHANGED_EVENT } from "@/lib/events";
 import { LOGIN_PATH } from "@/lib/auth-routes";
 import { getProfile } from "@/lib/session";
-import { createBrowserSupabaseClient } from "@/lib/supabase/browser";
 import { subscribeToTable } from "@/lib/supabase/client";
 
 export function useAuth() {
@@ -52,34 +51,10 @@ export function useAuth() {
     }
 
     window.addEventListener(AUTH_CHANGED_EVENT, onAuthChanged);
-
-    const supabase = createBrowserSupabaseClient();
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((event) => {
-      if (event === "SIGNED_OUT") {
-        setAuthenticated(false);
-        setHasProfile(false);
-        setNickname("");
-        setUserId("");
-        setReady(true);
-        return;
-      }
-
-      if (
-        event === "SIGNED_IN" ||
-        event === "INITIAL_SESSION" ||
-        event === "TOKEN_REFRESHED"
-      ) {
-        void refresh();
-      }
-    });
-
     const unsubscribe = subscribeToTable("users", onAuthChanged);
 
     return () => {
       window.removeEventListener(AUTH_CHANGED_EVENT, onAuthChanged);
-      subscription.unsubscribe();
       unsubscribe();
     };
   }, [refresh]);

@@ -2,11 +2,11 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { fetchUserProfileByAuthId } from "@/app/actions/user-profile";
+import { getSessionState } from "@/app/actions/user-session";
 import LoginScreen from "@/components/LoginScreen";
 import { NICKNAME_PATH } from "@/lib/auth-routes";
 import { logAuthRedirect } from "@/lib/auth-redirect-log";
-import { createBrowserSupabaseClient } from "@/lib/supabase/browser";
+import { writeUserIdToStorage } from "@/lib/user-session";
 
 export default function LoginPageContent() {
   const router = useRouter();
@@ -23,25 +23,22 @@ export default function LoginPageContent() {
 
     async function checkSessionOnce() {
       try {
-        const supabase = createBrowserSupabaseClient();
-        const {
-          data: { session },
-        } = await supabase.auth.getSession();
+        const state = await getSessionState();
 
         if (cancelled) return;
 
-        if (!session?.user) {
+        if (!state.authenticated) {
           logAuthRedirect("login-stay", "/login", { reason: "no-session" });
           setLoading(false);
           return;
         }
 
-        const profile = await fetchUserProfileByAuthId(session.user.id);
-        const destination = profile.ok ? "/" : NICKNAME_PATH;
+        writeUserIdToStorage(state.userId);
+        const destination = state.hasProfile ? "/" : NICKNAME_PATH;
 
         logAuthRedirect("login-session-redirect", destination, {
-          hasProfile: profile.ok,
-          userId: session.user.id,
+          hasProfile: state.hasProfile,
+          userId: state.userId,
         });
 
         router.replace(destination);
