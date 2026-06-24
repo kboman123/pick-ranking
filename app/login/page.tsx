@@ -1,9 +1,5 @@
-import LoginScreen from "@/components/LoginScreen";
+import LoginPageContent from "@/components/LoginPageContent";
 
 export default function LoginPage() {
-  return (
-    <div className="min-h-screen bg-[#0b0f14]">
-      <LoginScreen variant="page" />
-    </div>
-  );
+  return <LoginPageContent />;
 }

@@ -4,6 +4,7 @@ type LoginScreenProps = {
   variant?: "overlay" | "page";
 };
 
+/** 카카오 OAuth 시작만 담당 — 세션/리다이렉트는 LoginPageContent·/auth/callback에서 처리 */
 export default function LoginScreen({ variant = "overlay" }: LoginScreenProps) {
   async function handleKakaoLogin() {
     const { signInWithKakao } = await import("@/lib/auth-store");

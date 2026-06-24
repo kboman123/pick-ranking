@@ -3,14 +3,14 @@
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect } from "react";
 import Header from "@/components/Header";
-import LoginScreen from "@/components/LoginScreen";
 import { useAuth } from "@/hooks/useAuth";
 import {
+  isNicknamePath,
   isPublicPath,
-  isSetupPath,
   LOGIN_PATH,
-  SETUP_PATH,
+  NICKNAME_PATH,
 } from "@/lib/auth-routes";
+import { logAuthRedirect } from "@/lib/auth-redirect-log";
 import {
   getSupabaseEnvErrorMessage,
   isSupabaseConfigured,
@@ -24,26 +24,31 @@ export default function AuthProvider({
   const pathname = usePathname();
   const router = useRouter();
   const isPublic = isPublicPath(pathname);
-  const isSetup = isSetupPath(pathname);
+  const isNickname = isNicknamePath(pathname);
   const { authenticated, hasProfile, ready } = useAuth();
 
   useEffect(() => {
     if (!ready || isPublic) return;
 
     if (!authenticated) {
+      if (pathname === LOGIN_PATH) return;
+      logAuthRedirect("guard-unauthenticated", LOGIN_PATH, { from: pathname });
       router.replace(LOGIN_PATH);
       return;
     }
 
-    if (!hasProfile && !isSetup) {
-      router.replace(SETUP_PATH);
+    if (!hasProfile && !isNickname) {
+      if (pathname === NICKNAME_PATH) return;
+      logAuthRedirect("guard-no-profile", NICKNAME_PATH, { from: pathname });
+      router.replace(NICKNAME_PATH);
       return;
     }
 
-    if (hasProfile && isSetup) {
+    if (hasProfile && isNickname) {
+      logAuthRedirect("guard-has-profile", "/", { from: pathname });
       router.replace("/");
     }
-  }, [ready, authenticated, hasProfile, isPublic, isSetup, router]);
+  }, [ready, authenticated, hasProfile, isPublic, isNickname, pathname, router]);
 
   if (!isSupabaseConfigured()) {
     return (
@@ -80,7 +85,7 @@ export default function AuthProvider({
     );
   }
 
-  if (isSetup && !hasProfile) {
+  if (isNickname && !hasProfile) {
     return (
       <div className="flex min-h-screen flex-col bg-[#0b0f14] text-[#e8edf4]">
         <Header />

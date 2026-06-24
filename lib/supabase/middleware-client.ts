@@ -1,6 +1,7 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import { isPublicPath, LOGIN_PATH } from "@/lib/auth-routes";
+import { logAuthRedirect } from "@/lib/auth-redirect-log";
 import type { Database } from "./database.types";
 import { getSupabaseEnv } from "./env";
 
@@ -37,17 +38,11 @@ export async function updateSession(request: NextRequest) {
   const isPublic = isPublicPath(pathname);
 
   if (!session && !isPublic) {
+    logAuthRedirect("middleware-no-session", LOGIN_PATH, { from: pathname });
     const loginUrl = request.nextUrl.clone();
     loginUrl.pathname = LOGIN_PATH;
     loginUrl.search = "";
     return NextResponse.redirect(loginUrl);
-  }
-
-  if (session && pathname === LOGIN_PATH) {
-    const homeUrl = request.nextUrl.clone();
-    homeUrl.pathname = "/";
-    homeUrl.search = "";
-    return NextResponse.redirect(homeUrl);
   }
 
   return response;

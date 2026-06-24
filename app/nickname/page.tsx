@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import NicknameSetupForm from "@/components/NicknameSetupForm";
 import { useAuth } from "@/hooks/useAuth";
 
-export default function SetupPage() {
+export default function NicknamePage() {
   const router = useRouter();
   const { refresh } = useAuth();
 

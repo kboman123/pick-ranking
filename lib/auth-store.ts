@@ -58,12 +58,17 @@ export function isProfileComplete(): boolean {
 }
 
 function applyProfile(userId: string, nickname: string): ProfileValidationResult {
+  const cached = getProfile();
   setProfileCache({ userId, nickname });
-  emitDataEvent(AUTH_CHANGED_EVENT);
+
+  if (cached?.userId !== userId || cached?.nickname !== nickname) {
+    emitDataEvent(AUTH_CHANGED_EVENT);
+  }
+
   return { ok: true, nickname, userId };
 }
 
-/** Supabase Auth 세션 + users 프로필 동기화 */
+/** Supabase Auth 세션 + users 프로필 동기화 (이벤트는 상태 변경 시에만) */
 export async function syncAuthProfile(): Promise<{
   authenticated: boolean;
   hasProfile: boolean;
@@ -73,17 +78,32 @@ export async function syncAuthProfile(): Promise<{
     data: { session },
   } = await supabase.auth.getSession();
 
+  const cached = getProfile();
+
   if (!session?.user) {
+    const hadCache = cached !== null;
     clearProfileCache();
-    emitDataEvent(AUTH_CHANGED_EVENT);
+    if (hadCache) {
+      emitDataEvent(AUTH_CHANGED_EVENT);
+    }
     return { authenticated: false, hasProfile: false };
   }
 
   const result = await fetchUserProfileByAuthId(session.user.id);
   if (!result.ok) {
+    const hadCache = cached !== null;
     clearProfileCache();
-    emitDataEvent(AUTH_CHANGED_EVENT);
+    if (hadCache) {
+      emitDataEvent(AUTH_CHANGED_EVENT);
+    }
     return { authenticated: true, hasProfile: false };
+  }
+
+  if (
+    cached?.userId === result.userId &&
+    cached?.nickname === result.nickname
+  ) {
+    return { authenticated: true, hasProfile: true };
   }
 
   applyProfile(result.userId, result.nickname);

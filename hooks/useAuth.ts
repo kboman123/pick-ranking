@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   getLoggedInNickname,
   getLoggedInUserId,
@@ -21,8 +21,12 @@ export function useAuth() {
   const [authenticated, setAuthenticated] = useState(false);
   const [hasProfile, setHasProfile] = useState(false);
   const [ready, setReady] = useState(false);
+  const refreshingRef = useRef(false);
 
   const refresh = useCallback(async () => {
+    if (refreshingRef.current) return;
+    refreshingRef.current = true;
+
     try {
       const state = await syncAuthProfile();
       setAuthenticated(state.authenticated);
@@ -36,17 +40,18 @@ export function useAuth() {
       setUserId("");
     } finally {
       setReady(true);
+      refreshingRef.current = false;
     }
   }, []);
 
   useEffect(() => {
     void refresh();
 
-    function onUpdate() {
+    function onAuthChanged() {
       void refresh();
     }
 
-    window.addEventListener(AUTH_CHANGED_EVENT, onUpdate);
+    window.addEventListener(AUTH_CHANGED_EVENT, onAuthChanged);
 
     const supabase = createBrowserSupabaseClient();
     const {
@@ -60,13 +65,20 @@ export function useAuth() {
         setReady(true);
         return;
       }
-      void refresh();
+
+      if (
+        event === "SIGNED_IN" ||
+        event === "INITIAL_SESSION" ||
+        event === "TOKEN_REFRESHED"
+      ) {
+        void refresh();
+      }
     });
 
-    const unsubscribe = subscribeToTable("users", onUpdate);
+    const unsubscribe = subscribeToTable("users", onAuthChanged);
 
     return () => {
-      window.removeEventListener(AUTH_CHANGED_EVENT, onUpdate);
+      window.removeEventListener(AUTH_CHANGED_EVENT, onAuthChanged);
       subscription.unsubscribe();
       unsubscribe();
     };
