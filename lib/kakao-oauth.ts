@@ -3,50 +3,40 @@ function cleanEnvValue(value: string | undefined): string {
   return value.trim().replace(/^['"]|['"]$/g, "");
 }
 
-export function getKakaoClientId(): string {
-  return cleanEnvValue(process.env.NEXT_PUBLIC_KAKAO_REST_API_KEY);
-}
+export const KAKAO_REDIRECT_URI =
+  "https://pick-ranking.vercel.app/auth/kakao/callback";
 
-export function getKakaoClientSecret(): string {
-  return cleanEnvValue(process.env.KAKAO_CLIENT_SECRET);
-}
-
-/** Production: https://pick-ranking.vercel.app/auth/kakao/callback */
-export function getKakaoRedirectUri(origin?: string): string {
-  const fromEnv = cleanEnvValue(process.env.NEXT_PUBLIC_KAKAO_REDIRECT_URI);
-  if (fromEnv) return fromEnv;
-  if (origin) return `${origin}/auth/kakao/callback`;
-  return "https://pick-ranking.vercel.app/auth/kakao/callback";
+export function getKakaoRestApiKey(): string {
+  return cleanEnvValue(process.env.KAKAO_REST_API_KEY);
 }
 
 export function isKakaoConfigured(): boolean {
-  return getKakaoClientId().length > 0;
+  return getKakaoRestApiKey().length > 0;
 }
 
 /** scope 파라미터 없음 */
-export function buildKakaoAuthorizeUrl(origin?: string): string {
+export function buildKakaoAuthorizeUrl(): string {
   const url = new URL("https://kauth.kakao.com/oauth/authorize");
-  url.searchParams.set("client_id", getKakaoClientId());
-  url.searchParams.set("redirect_uri", getKakaoRedirectUri(origin));
+  url.searchParams.set("client_id", getKakaoRestApiKey());
+  url.searchParams.set("redirect_uri", KAKAO_REDIRECT_URI);
   url.searchParams.set("response_type", "code");
   return url.toString();
 }
 
 export async function exchangeKakaoCode(
   code: string,
-  origin?: string,
 ): Promise<{ accessToken: string } | { error: string }> {
+  const clientId = getKakaoRestApiKey();
+  if (!clientId) {
+    return { error: "Kakao REST API key가 설정되지 않았습니다." };
+  }
+
   const body = new URLSearchParams({
     grant_type: "authorization_code",
-    client_id: getKakaoClientId(),
-    redirect_uri: getKakaoRedirectUri(origin),
+    client_id: clientId,
+    redirect_uri: KAKAO_REDIRECT_URI,
     code,
   });
-
-  const secret = getKakaoClientSecret();
-  if (secret) {
-    body.set("client_secret", secret);
-  }
 
   const response = await fetch("https://kauth.kakao.com/oauth/token", {
     method: "POST",

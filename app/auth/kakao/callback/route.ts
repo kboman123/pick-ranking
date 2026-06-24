@@ -47,7 +47,7 @@ export async function GET(request: Request) {
     );
   }
 
-  const tokenResult = await exchangeKakaoCode(code, origin);
+  const tokenResult = await exchangeKakaoCode(code);
   if ("error" in tokenResult) {
     logAuthRedirect("kakao-callback-token-error", LOGIN_PATH, {
       error: tokenResult.error,

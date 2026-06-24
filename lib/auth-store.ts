@@ -7,7 +7,6 @@ import {
   getProfile,
   setProfileCache,
 } from "./session";
-import { buildKakaoAuthorizeUrl, isKakaoConfigured } from "./kakao-oauth";
 import {
   clearUserIdFromStorage,
   readUserIdFromStorage,
@@ -112,14 +111,9 @@ export async function syncAuthProfile(): Promise<{
   return { authenticated: true, hasProfile: true };
 }
 
-/** 카카오 인증 URL로 직접 이동 (scope 없음) */
+/** 서버에서 Kakao authorize URL 생성 (scope 없음, client_secret 미사용) */
 export function signInWithKakao(): { ok: true } | { ok: false; error: string } {
-  if (!isKakaoConfigured()) {
-    return { ok: false, error: "Kakao API key가 설정되지 않았습니다." };
-  }
-
-  const url = buildKakaoAuthorizeUrl(window.location.origin);
-  window.location.assign(url);
+  window.location.assign("/auth/kakao/start");
   return { ok: true };
 }
 
