@@ -111,12 +111,18 @@ export async function syncAuthProfile(): Promise<{
 }
 
 export async function signInWithKakao(): Promise<{ ok: true } | { ok: false; error: string }> {
-  if (typeof window === "undefined") {
-    return { ok: false, error: "브라우저에서만 로그인할 수 있습니다." };
+  const supabase = createBrowserSupabaseClient();
+  const redirectTo = `${window.location.origin}/auth/callback`;
+
+  const { error } = await supabase.auth.signInWithOAuth({
+    provider: "kakao",
+    options: { redirectTo },
+  });
+
+  if (error) {
+    return { ok: false, error: error.message };
   }
 
-  // Supabase signInWithOAuth('kakao')는 account_email 등 scope를 강제 요청함 → 직접 OAuth
-  window.location.assign("/auth/kakao/start");
   return { ok: true };
 }
 
