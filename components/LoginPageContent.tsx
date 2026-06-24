@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { fetchUserProfileByAuthId } from "@/app/actions/user-profile";
 import LoginScreen from "@/components/LoginScreen";
 import { NICKNAME_PATH } from "@/lib/auth-routes";
@@ -10,6 +10,8 @@ import { createBrowserSupabaseClient } from "@/lib/supabase/browser";
 
 export default function LoginPageContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const authError = searchParams.get("auth_error");
   const [loading, setLoading] = useState(true);
   const checkedRef = useRef(false);
 
@@ -70,6 +72,11 @@ export default function LoginPageContent() {
 
   return (
     <div className="min-h-screen bg-[#0b0f14]">
+      {authError ? (
+        <p className="mx-auto max-w-md px-4 pt-6 text-center text-sm text-red-400">
+          {authError}
+        </p>
+      ) : null}
       <LoginScreen variant="page" />
     </div>
   );
