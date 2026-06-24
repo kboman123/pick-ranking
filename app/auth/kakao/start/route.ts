@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import {
   buildKakaoAuthorizeUrl,
+  getKakaoOAuthEnv,
   isKakaoOAuthConfigured,
 } from "@/lib/kakao-oauth";
 import { LOGIN_PATH } from "@/lib/auth-routes";
@@ -17,7 +18,23 @@ export async function GET(request: Request) {
   }
 
   const authorizeUrl = buildKakaoAuthorizeUrl(origin);
-  logAuthRedirect("kakao-start", authorizeUrl, { scopes: "none" });
+  const redirectUri = `${origin}/auth/kakao/callback`;
+  const { clientId } = getKakaoOAuthEnv();
+
+  console.info("[kakao-oauth] /auth/kakao/start", {
+    origin,
+    redirectUri,
+    clientIdPrefix: clientId ? `${clientId.slice(0, 6)}…` : "(missing)",
+    KAKAO_REST_API_KEY_configured: Boolean(clientId),
+    authorizeUrl,
+    scopes: "none",
+  });
+
+  logAuthRedirect("kakao-start", authorizeUrl, {
+    scopes: "none",
+    redirectUri,
+    clientIdConfigured: Boolean(clientId),
+  });
 
   return NextResponse.redirect(authorizeUrl);
 }

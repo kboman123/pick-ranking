@@ -8,7 +8,11 @@ export const NICKNAME_PATH = "/nickname";
 export const SETUP_PATH = NICKNAME_PATH;
 
 export function isPublicPath(pathname: string): boolean {
-  return pathname === LOGIN_PATH || pathname.startsWith("/auth/");
+  return (
+    pathname === LOGIN_PATH ||
+    pathname.startsWith("/auth/") ||
+    pathname === "/api/auth/kakao/debug"
+  );
 }
 
 export function isNicknamePath(pathname: string): boolean {
