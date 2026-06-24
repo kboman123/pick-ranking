@@ -111,33 +111,18 @@ export async function syncAuthProfile(): Promise<{
 }
 
 export async function signInWithKakao(): Promise<{ ok: true } | { ok: false; error: string }> {
-  if (typeof window === "undefined") {
-    return { ok: false, error: "브라우저에서만 로그인할 수 있습니다." };
+  const supabase = createBrowserSupabaseClient();
+  const redirectTo = `${window.location.origin}/auth/callback`;
+
+  const { error } = await supabase.auth.signInWithOAuth({
+    provider: "kakao",
+    options: { redirectTo },
+  });
+
+  if (error) {
+    return { ok: false, error: error.message };
   }
 
-  const origin = window.location.origin;
-  const redirectTo = `${origin}/auth/kakao/callback`;
-  const startUrl = `${origin}/auth/kakao/start`;
-
-  console.info("[kakao-oauth] signInWithKakao 호출");
-  console.info("[kakao-oauth] signInWithOAuth 사용 여부: false (직접 Kakao OAuth)");
-  console.info("[kakao-oauth] supabase.auth.signInWithOAuth({ provider: 'kakao' }) → 미사용");
-  console.info("[kakao-oauth] redirectTo (callback):", redirectTo);
-  console.info("[kakao-oauth] start URL:", startUrl);
-  console.info("[kakao-oauth] scopes: [] (account_email/profile_image/profile_nickname 미요청)");
-
-  try {
-    const debugRes = await fetch("/api/auth/kakao/debug", { cache: "no-store" });
-    if (debugRes.ok) {
-      const debug = await debugRes.json();
-      console.info("[kakao-oauth] 서버 진단 (Production env):", debug);
-      console.info("[kakao-oauth] authorizeUrl (전체):", debug.authorizeUrl);
-    }
-  } catch (error) {
-    console.warn("[kakao-oauth] debug API 호출 실패:", error);
-  }
-
-  window.location.assign("/auth/kakao/start");
   return { ok: true };
 }
 
