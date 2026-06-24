@@ -2,7 +2,7 @@ import {
   PREDICTIONS_UPDATED_EVENT,
   emitDataEvent,
 } from "./events";
-import { getLoggedInUserId } from "./nickname-store";
+import { getLoggedInUserId } from "./auth-store";
 import { getSupabase } from "./supabase/client";
 
 export type PickChoice = "home" | "away";

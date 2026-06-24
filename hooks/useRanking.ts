@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import {
   PREDICTIONS_UPDATED_EVENT,
   RESULTS_UPDATED_EVENT,
-  NICKNAME_CHANGED_EVENT,
+  AUTH_CHANGED_EVENT,
 } from "@/lib/events";
 import type { RankedMember } from "@/lib/ranking";
 import { fetchRanking } from "@/lib/ranking-store";
@@ -35,7 +35,7 @@ export function useRanking(period: RankingPeriod = "weekly") {
 
     window.addEventListener(PREDICTIONS_UPDATED_EVENT, onUpdate);
     window.addEventListener(RESULTS_UPDATED_EVENT, onUpdate);
-    window.addEventListener(NICKNAME_CHANGED_EVENT, onUpdate);
+    window.addEventListener(AUTH_CHANGED_EVENT, onUpdate);
 
     const unsubPredictions = subscribeToTable("predictions", onUpdate);
     const unsubGames = subscribeToTable("games", onUpdate);
@@ -43,7 +43,7 @@ export function useRanking(period: RankingPeriod = "weekly") {
     return () => {
       window.removeEventListener(PREDICTIONS_UPDATED_EVENT, onUpdate);
       window.removeEventListener(RESULTS_UPDATED_EVENT, onUpdate);
-      window.removeEventListener(NICKNAME_CHANGED_EVENT, onUpdate);
+      window.removeEventListener(AUTH_CHANGED_EVENT, onUpdate);
       unsubPredictions();
       unsubGames();
     };

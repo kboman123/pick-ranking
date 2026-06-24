@@ -4,9 +4,9 @@ import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
 import { useMatches } from "@/hooks/useMatches";
 import { useRanking } from "@/hooks/useRanking";
-import { getParticipantCount } from "@/lib/nickname-store";
+import { getParticipantCount } from "@/lib/auth-store";
 import { getTodayMatchCount } from "@/lib/match-store";
-import { NICKNAME_CHANGED_EVENT } from "@/lib/events";
+import { AUTH_CHANGED_EVENT } from "@/lib/events";
 
 type StatCardProps = {
   label: string;
@@ -62,8 +62,8 @@ export default function HomeStats() {
 
     void update();
     const handler = () => void update();
-    window.addEventListener(NICKNAME_CHANGED_EVENT, handler);
-    return () => window.removeEventListener(NICKNAME_CHANGED_EVENT, handler);
+    window.addEventListener(AUTH_CHANGED_EVENT, handler);
+    return () => window.removeEventListener(AUTH_CHANGED_EVENT, handler);
   }, [matchesLoaded, ranking]);
 
   const topAnalyst = ranking[0];

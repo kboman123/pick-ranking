@@ -1,27 +1,16 @@
-import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "./database.types";
+import { createBrowserSupabaseClient } from "./browser";
 import {
-  getSupabaseEnv,
   getSupabaseEnvErrorMessage,
   isSupabaseConfigured,
 } from "./env";
-
-let client: SupabaseClient<Database> | null = null;
 
 /** Re-enable when Realtime postgres_changes subscriptions are wired up again. */
 const REALTIME_ENABLED = false;
 
 export function getSupabase(): SupabaseClient<Database> {
-  if (client) return client;
-
-  const { url, publishableKey } = getSupabaseEnv();
-
-  if (!url || !publishableKey) {
-    throw new Error(getSupabaseEnvErrorMessage());
-  }
-
-  client = createClient<Database>(url, publishableKey);
-  return client;
+  return createBrowserSupabaseClient();
 }
 
 export function subscribeToTable(

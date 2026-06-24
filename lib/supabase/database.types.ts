@@ -3,7 +3,6 @@ export type PickOutcome = "home" | "away";
 
 export type DbUser = {
   id: string;
-  uid: string;
   nickname: string;
   created_at: string;
 };
@@ -56,13 +55,11 @@ export type Database = {
       users: {
         Row: DbUser;
         Insert: {
-          id?: string;
-          uid: string;
+          id: string;
           nickname: string;
           created_at?: string;
         };
         Update: {
-          uid?: string;
           nickname?: string;
         };
         Relationships: [];
@@ -107,22 +104,7 @@ export type Database = {
           submitted_at?: string;
           updated_at?: string;
         };
-        Relationships: [
-          {
-            foreignKeyName: "predictions_user_id_fkey";
-            columns: ["user_id"];
-            isOneToOne: false;
-            referencedRelation: "users";
-            referencedColumns: ["id"];
-          },
-          {
-            foreignKeyName: "predictions_game_id_fkey";
-            columns: ["game_id"];
-            isOneToOne: false;
-            referencedRelation: "games";
-            referencedColumns: ["id"];
-          },
-        ];
+        Relationships: [];
       };
     };
     Views: {

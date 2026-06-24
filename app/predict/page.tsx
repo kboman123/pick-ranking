@@ -1,12 +1,9 @@
 import Footer from "@/components/Footer";
-import Header from "@/components/Header";
 import PredictionForm from "@/components/PredictionForm";
 
 export default function PredictPage() {
   return (
-    <div className="flex min-h-screen flex-col bg-[#0b0f14] text-[#e8edf4]">
-      <Header />
-
+    <>
       <main className="mx-auto w-full max-w-6xl flex-1 px-3 py-6 sm:px-6 sm:py-10">
         <section className="mb-4 sm:mb-10">
           <p className="mb-1 text-xs font-medium uppercase tracking-widest text-[#00d4aa] sm:mb-2 sm:text-sm">
@@ -29,6 +26,6 @@ export default function PredictPage() {
       </main>
 
       <Footer />
-    </div>
+    </>
   );
 }

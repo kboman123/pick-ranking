@@ -31,11 +31,10 @@ EXCEPTION
 END $$;
 
 -- -----------------------------------------------------------------------------
--- 2. users — 닉네임 회원 (id, uid, nickname, created_at)
+-- 2. users — Supabase Auth user id + nickname
 -- -----------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS public.users (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  uid text NOT NULL,
+  id uuid PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
   nickname text NOT NULL,
   created_at timestamptz NOT NULL DEFAULT now(),
 
@@ -46,12 +45,9 @@ CREATE TABLE IF NOT EXISTS public.users (
   )
 );
 
-COMMENT ON TABLE public.users IS '닉네임 기반 회원';
-COMMENT ON COLUMN public.users.uid IS '외부 식별자';
+COMMENT ON TABLE public.users IS 'Supabase Auth user id + 표시용 nickname';
+COMMENT ON COLUMN public.users.id IS 'auth.users.id 와 동일';
 COMMENT ON COLUMN public.users.nickname IS '2~12자, 공백 불가. lower() 유니크로 중복 방지';
-
-CREATE UNIQUE INDEX IF NOT EXISTS users_uid_unique
-  ON public.users (uid);
 
 CREATE UNIQUE INDEX IF NOT EXISTS users_nickname_lower_unique
   ON public.users (lower(nickname));

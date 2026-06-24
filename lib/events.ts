@@ -7,8 +7,11 @@ export const PREDICTIONS_UPDATED_EVENT = "pick-ranking:predictions-updated";
 /** 경기 결과가 저장될 때 */
 export const RESULTS_UPDATED_EVENT = "pick-ranking:results-updated";
 
-/** 닉네임 로그인 상태 변경 */
+/** 닉네임/로그인 상태 변경 */
 export const NICKNAME_CHANGED_EVENT = "pick-ranking:nickname-changed";
+
+/** Supabase Auth / 프로필 상태 변경 */
+export const AUTH_CHANGED_EVENT = "pick-ranking:auth-changed";
 
 export function emitDataEvent(name: string): void {
   if (typeof window === "undefined") return;
