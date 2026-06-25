@@ -7,6 +7,8 @@ import { useMatches } from "@/hooks/useMatches";
 import { useNickname } from "@/hooks/useNickname";
 import { buildResultMap, saveGameResults } from "@/lib/match-store";
 import { fetchSavedPredictions } from "@/lib/prediction-store";
+import MatchLiveMeta from "@/components/MatchLiveMeta";
+import MatchStatusBadge from "@/components/MatchStatusBadge";
 import {
   outcomeLabel,
   summarizePredictions,
@@ -373,16 +375,21 @@ export default function ResultManager() {
                   <span className="text-xs text-[#8b9cb3]">
                     {formatMatchDate(match.scheduledAt)}
                   </span>
-                  {outcome ? (
-                    <span className="rounded-full bg-[#00d4aa1a] px-2.5 py-0.5 text-xs font-medium text-[#00d4aa] sm:ml-auto">
-                      결과 확정
-                    </span>
-                  ) : (
-                    <span className="rounded-full border border-[#1e2a3a] px-2.5 py-0.5 text-xs text-[#8b9cb3] sm:ml-auto">
-                      미확정
-                    </span>
-                  )}
+                  <MatchStatusBadge status={match.status} className="sm:ml-auto" />
+                  {!match.status || match.status === "Scheduled" ? (
+                    outcome ? (
+                      <span className="rounded-full bg-[#00d4aa1a] px-2.5 py-0.5 text-xs font-medium text-[#00d4aa]">
+                        결과 확정
+                      </span>
+                    ) : (
+                      <span className="rounded-full border border-[#1e2a3a] px-2.5 py-0.5 text-xs text-[#8b9cb3]">
+                        미확정
+                      </span>
+                    )
+                  ) : null}
                 </div>
+
+                <MatchLiveMeta match={match} className="mb-3 sm:mb-4" />
 
                 <p className="mb-2 break-words text-sm font-semibold sm:mb-3 sm:text-lg">
                   {match.homeTeam}

@@ -69,9 +69,15 @@ CREATE TABLE IF NOT EXISTS public.games (
   away_team text NOT NULL,
   scheduled_at timestamptz NOT NULL,
 
-  -- results 테이블 대신 여기에 저장
+  -- results 테이블 대신 여기에 저장 (game_result)
   result public.pick_outcome,          -- NULL = 결과 미입력
   result_at timestamptz,               -- 관리자 결과 입력 시각
+  home_score integer,
+  away_score integer,
+  status text NOT NULL DEFAULT 'Scheduled',
+  status_detail text,
+  api_sports_game_id integer,
+  synced_at timestamptz,
 
   created_at timestamptz NOT NULL DEFAULT now(),
   updated_at timestamptz NOT NULL DEFAULT now(),
@@ -109,6 +115,8 @@ CREATE TABLE IF NOT EXISTS public.predictions (
   user_id uuid NOT NULL REFERENCES public.users (id) ON DELETE CASCADE,
   game_id uuid NOT NULL REFERENCES public.games (id) ON DELETE CASCADE,
   pick public.pick_outcome NOT NULL,
+  is_hit boolean,
+  evaluated_at timestamptz,
   submitted_at timestamptz NOT NULL DEFAULT now(),
   created_at timestamptz NOT NULL DEFAULT now(),
   updated_at timestamptz NOT NULL DEFAULT now(),

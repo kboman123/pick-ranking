@@ -8,14 +8,29 @@ export type DbUser = {
   created_at: string;
 };
 
+export type GameStatus =
+  | "Scheduled"
+  | "Live"
+  | "Finished"
+  | "Postponed"
+  | "Cancelled"
+  | string;
+
 export type DbGame = {
   id: string;
   sport: SportType;
   home_team: string;
   away_team: string;
   scheduled_at: string;
+  /** game_result — home=홈팀 승, away=원정팀 승 */
   result: PickOutcome | null;
   result_at: string | null;
+  home_score: number | null;
+  away_score: number | null;
+  status: GameStatus;
+  status_detail: string | null;
+  api_sports_game_id: number | null;
+  synced_at: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -25,6 +40,8 @@ export type DbPrediction = {
   user_id: string;
   game_id: string;
   pick: PickOutcome;
+  is_hit: boolean | null;
+  evaluated_at: string | null;
   submitted_at: string;
   created_at: string;
   updated_at: string;
@@ -77,6 +94,12 @@ export type Database = {
           scheduled_at: string;
           result?: PickOutcome | null;
           result_at?: string | null;
+          home_score?: number | null;
+          away_score?: number | null;
+          status?: GameStatus;
+          status_detail?: string | null;
+          api_sports_game_id?: number | null;
+          synced_at?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -87,6 +110,12 @@ export type Database = {
           scheduled_at?: string;
           result?: PickOutcome | null;
           result_at?: string | null;
+          home_score?: number | null;
+          away_score?: number | null;
+          status?: GameStatus;
+          status_detail?: string | null;
+          api_sports_game_id?: number | null;
+          synced_at?: string | null;
           updated_at?: string;
         };
         Relationships: [];
@@ -104,6 +133,8 @@ export type Database = {
         };
         Update: {
           pick?: PickOutcome;
+          is_hit?: boolean | null;
+          evaluated_at?: string | null;
           submitted_at?: string;
           updated_at?: string;
         };

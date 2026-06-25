@@ -1,20 +1,9 @@
 import { MATCHES_UPDATED_EVENT, RESULTS_UPDATED_EVENT, emitDataEvent } from "./events";
+import { rowToMatch } from "./match-mapper";
 import { getSupabase } from "./supabase/client";
-import type { DbGame } from "./supabase/database.types";
 import type { Match, MatchInput, MatchOutcome } from "./types";
 
-function rowToMatch(row: DbGame): Match {
-  return {
-    id: row.id,
-    sport: row.sport,
-    homeTeam: row.home_team,
-    awayTeam: row.away_team,
-    scheduledAt: row.scheduled_at,
-    createdAt: row.created_at,
-    result: row.result,
-    resultAt: row.result_at,
-  };
-}
+export { rowToMatch } from "./match-mapper";
 
 export async function fetchMatches(): Promise<Match[]> {
   const supabase = getSupabase();

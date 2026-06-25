@@ -2,9 +2,11 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { FormEvent, useState } from "react";
+import { FormEvent, useState, useTransition } from "react";
+import { triggerResultSync } from "@/app/actions/sync-results";
 import { useAdmin } from "@/hooks/useAdmin";
 import { loginAdmin } from "@/lib/admin-auth";
+import type { SyncResultSummary } from "@/lib/services/result-sync";
 
 const inputClass =
   "w-full rounded-xl border border-[#1e2a3a] bg-[#0b0f14] px-4 py-3 text-[#e8edf4] outline-none transition-colors focus:border-[#00d4aa66] focus:ring-1 focus:ring-[#00d4aa33]";
@@ -14,6 +16,9 @@ export default function AdminPanel() {
   const { isAdmin, ready, logout } = useAdmin();
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const [syncMessage, setSyncMessage] = useState("");
+  const [syncSummary, setSyncSummary] = useState<SyncResultSummary | null>(null);
+  const [isSyncing, startSync] = useTransition();
 
   async function handleLogin(e: FormEvent) {
     e.preventDefault();
@@ -31,6 +36,32 @@ export default function AdminPanel() {
     await logout();
     setPassword("");
     setError("");
+    setSyncMessage("");
+    setSyncSummary(null);
+  }
+
+  function handleSyncResults() {
+    setSyncMessage("");
+    setSyncSummary(null);
+
+    startSync(async () => {
+      try {
+        const summary = await triggerResultSync();
+        setSyncSummary(summary);
+
+        if (summary.errors.length > 0) {
+          setSyncMessage(
+            `동기화 완료 (일부 오류 ${summary.errors.length}건). 아래 상세를 확인하세요.`,
+          );
+        } else {
+          setSyncMessage(
+            `동기화 완료 — 신규 ${summary.created} · 업데이트 ${summary.updated} · 종료 ${summary.finished} · 예측 판정 ${summary.predictionsEvaluated}`,
+          );
+        }
+      } catch {
+        setSyncMessage("동기화에 실패했습니다. API 키와 Supabase service role을 확인하세요.");
+      }
+    });
   }
 
   if (!ready) {
@@ -110,6 +141,37 @@ export default function AdminPanel() {
           세션 쿠키로 로그인 상태가 유지됩니다. 새로고침 후에도 유지됩니다.
         </p>
       </div>
+
+      <section className="rounded-lg border border-[#1e2a3a] bg-[#121820] p-3 sm:rounded-2xl sm:p-6">
+        <h3 className="text-sm font-semibold sm:text-lg">경기 결과 자동 동기화</h3>
+        <p className="mt-1 text-xs text-[#8b9cb3] sm:text-sm">
+          Cron/API-SPORTS가 오늘 KBO · NPB · MLB 경기를 자동 등록하고 결과·
+          취소·연기 상태를 반영합니다. 수동 경기 등록은 선택 사항입니다.
+        </p>
+
+        {syncMessage ? (
+          <p className="mt-3 rounded-lg border border-[#00d4aa33] bg-[#00d4aa1a] px-3 py-2 text-xs text-[#00d4aa] sm:text-sm">
+            {syncMessage}
+          </p>
+        ) : null}
+
+        {syncSummary?.errors.length ? (
+          <ul className="mt-2 list-inside list-disc text-xs text-red-400">
+            {syncSummary.errors.slice(0, 5).map((item) => (
+              <li key={item}>{item}</li>
+            ))}
+          </ul>
+        ) : null}
+
+        <button
+          type="button"
+          onClick={handleSyncResults}
+          disabled={isSyncing}
+          className="mt-4 w-full rounded-xl border border-[#00d4aa33] bg-[#00d4aa1a] py-3 text-sm font-semibold text-[#00d4aa] transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto sm:px-8"
+        >
+          {isSyncing ? "동기화 중…" : "지금 동기화"}
+        </button>
+      </section>
 
       <div className="grid grid-cols-2 gap-2 sm:gap-4">
         <Link

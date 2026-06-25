@@ -13,6 +13,7 @@ import {
   savePredictions,
   type PickChoice,
 } from "@/lib/prediction-store";
+import MatchLiveMeta from "@/components/MatchLiveMeta";
 import type { Match, Sport } from "@/lib/types";
 import MatchOpinionBar from "@/components/MatchOpinionBar";
 
@@ -299,6 +300,8 @@ export default function PredictionForm() {
                   </span>
                 )}
               </div>
+
+              <MatchLiveMeta match={match} className="mb-2 sm:mb-3" />
 
               <div className="flex min-w-0 flex-row gap-2 sm:gap-3">
                 {showReadOnly ? (

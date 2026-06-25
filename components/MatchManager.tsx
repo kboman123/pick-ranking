@@ -5,6 +5,8 @@ import { FormEvent, useState } from "react";
 import { useAdmin } from "@/hooks/useAdmin";
 import { useMatches } from "@/hooks/useMatches";
 import { addMatch, deleteMatch, updateMatch } from "@/lib/match-store";
+import MatchLiveMeta from "@/components/MatchLiveMeta";
+import { formatSyncedAt } from "@/lib/game-status";
 import type { Match, Sport } from "@/lib/types";
 import { SPORTS } from "@/lib/types";
 
@@ -63,12 +65,13 @@ function MatchList({ matches }: { matches: Match[] }) {
           key={match.id}
           className="px-4 py-4 transition-colors hover:bg-white/[0.02] sm:px-6"
         >
-          <div className="mb-2 flex items-center gap-2">
+          <div className="mb-2 flex flex-wrap items-center gap-2">
             <SportBadge sport={match.sport} />
             <span className="text-xs text-[#8b9cb3]">
               {formatMatchDate(match.scheduledAt)}
             </span>
           </div>
+          <MatchLiveMeta match={match} className="mb-2" />
           <p className="break-words text-base font-semibold sm:text-lg">
             {match.homeTeam}
             <span className="mx-2 text-sm font-normal text-[#8b9cb3]">vs</span>
@@ -82,7 +85,7 @@ function MatchList({ matches }: { matches: Match[] }) {
 
 export default function MatchManager() {
   const { isAdmin } = useAdmin();
-  const { matches, refresh } = useMatches();
+  const { matches, refresh, lastLiveUpdateAt } = useMatches();
   const [sport, setSport] = useState<Sport>("KBO");
   const [homeTeam, setHomeTeam] = useState("");
   const [awayTeam, setAwayTeam] = useState("");
@@ -178,6 +181,9 @@ export default function MatchManager() {
           <h2 className="text-lg font-semibold">경기 일정</h2>
           <p className="mt-1 text-sm text-[#8b9cb3]">
             총 {matches.length}경기 · 조회 전용
+            {lastLiveUpdateAt ? (
+              <> · 실시간 갱신 {formatSyncedAt(lastLiveUpdateAt)}</>
+            ) : null}
           </p>
         </div>
         <MatchList matches={matches} />
@@ -194,7 +200,8 @@ export default function MatchManager() {
               {editingId ? "경기 수정" : "경기 등록"}
             </h2>
             <p className="mt-1 text-sm text-[#8b9cb3]">
-              관리자 전용 — 경기 등록 · 수정
+              오늘 경기는 Cron 동기화로 자동 등록됩니다. 아래는 예외 상황용
+              수동 등록입니다.
             </p>
           </div>
           <span className="rounded-full bg-[#00d4aa1a] px-3 py-1 text-xs font-medium text-[#00d4aa]">
@@ -300,6 +307,9 @@ export default function MatchManager() {
           <h2 className="text-lg font-semibold">등록된 경기</h2>
           <p className="mt-1 text-sm text-[#8b9cb3]">
             총 {matches.length}경기 · 수정 · 삭제 가능
+            {lastLiveUpdateAt ? (
+              <> · 실시간 갱신 {formatSyncedAt(lastLiveUpdateAt)}</>
+            ) : null}
           </p>
         </div>
 
@@ -316,12 +326,13 @@ export default function MatchManager() {
                 key={match.id}
                 className="px-4 py-4 transition-colors hover:bg-white/[0.02] sm:px-6"
               >
-                <div className="mb-2 flex items-center gap-2">
+                <div className="mb-2 flex flex-wrap items-center gap-2">
                   <SportBadge sport={match.sport} />
                   <span className="text-xs text-[#8b9cb3]">
                     {formatMatchDate(match.scheduledAt)}
                   </span>
                 </div>
+                <MatchLiveMeta match={match} className="mb-2" />
                 <p className="break-words text-base font-semibold sm:text-lg">
                   {match.homeTeam}
                   <span className="mx-2 text-sm font-normal text-[#8b9cb3]">
