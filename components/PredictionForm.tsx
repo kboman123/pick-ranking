@@ -5,7 +5,7 @@ import { useMatches } from "@/hooks/useMatches";
 import { useMatchOpinions } from "@/hooks/useMatchOpinions";
 import { useNickname } from "@/hooks/useNickname";
 import { useNow } from "@/hooks/useNow";
-import { isMatchClosed, isMatchOpen } from "@/lib/match-utils";
+import { isMatchClosed, isMatchOpen, KST_TIMEZONE } from "@/lib/match-utils";
 import {
   fetchSavedPredictions,
   picksToRecord,
@@ -18,6 +18,7 @@ import MatchOpinionBar from "@/components/MatchOpinionBar";
 
 function formatMatchDate(iso: string) {
   return new Intl.DateTimeFormat("ko-KR", {
+    timeZone: KST_TIMEZONE,
     month: "long",
     day: "numeric",
     weekday: "short",
@@ -128,18 +129,17 @@ export default function PredictionForm() {
   const [initialized, setInitialized] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
-  const matchIds = useMemo(() => matches.map((m) => m.id), [matches]);
-  const { opinions } = useMatchOpinions(matchIds);
-
   const openMatches = useMemo(
     () => matches.filter((m) => isMatchOpen(m.scheduledAt, now)),
     [matches, now],
   );
 
-  const closedMatches = useMemo(
-    () => matches.filter((m) => isMatchClosed(m.scheduledAt, now)),
-    [matches, now],
+  const openMatchIds = useMemo(
+    () => openMatches.map((m) => m.id),
+    [openMatches],
   );
+
+  const { opinions } = useMatchOpinions(openMatchIds);
 
   const readOnly = submitted;
 
@@ -153,7 +153,7 @@ export default function PredictionForm() {
         const saved = await fetchSavedPredictions(userId);
         if (cancelled) return;
 
-        setPicks(restorePicksFromBatch(saved, matchIds));
+        setPicks(restorePicksFromBatch(saved, openMatchIds));
 
         if (saved && saved.predictions.length > 0) {
           setSubmitted(true);
@@ -174,7 +174,7 @@ export default function PredictionForm() {
     return () => {
       cancelled = true;
     };
-  }, [loaded, matchIds.join(","), userId]);
+  }, [loaded, openMatchIds.join(","), userId]);
 
   const openSelectedCount = useMemo(
     () => openMatches.filter((m) => picks[m.id]).length,
@@ -200,7 +200,10 @@ export default function PredictionForm() {
     setError("");
 
     try {
-      await savePredictions(picksToRecord(picks), userId);
+      await savePredictions(
+        picksToRecord(picks).filter((p) => openMatchIds.includes(p.matchId)),
+        userId,
+      );
       setSubmitted(true);
       setSuccessMessage("예측이 저장되었습니다 · 조회 전용");
     } catch {
@@ -218,13 +221,13 @@ export default function PredictionForm() {
     );
   }
 
-  if (matches.length === 0) {
+  if (openMatches.length === 0) {
     return (
       <div className="rounded-2xl border border-[#1e2a3a] bg-[#121820] px-4 py-16 text-center sm:px-6">
         <p className="text-4xl">📋</p>
-        <p className="mt-4 text-lg font-semibold">등록된 경기가 없습니다</p>
+        <p className="mt-4 text-lg font-semibold">예측 가능한 경기가 없습니다.</p>
         <p className="mt-2 text-sm text-[#8b9cb3]">
-          관리자가 경기를 등록하면 여기에서 예측할 수 있습니다.
+          마감된 경기는 결과 페이지에서 확인할 수 있습니다.
         </p>
       </div>
     );
@@ -237,15 +240,10 @@ export default function PredictionForm() {
           <span className="font-semibold text-[#00d4aa]">{nickname}</span>
           님 · 예측 가능{" "}
           <span className="font-semibold text-[#00d4aa]">{openCount}</span>
-          경기 · 마감{" "}
-          <span className="font-semibold text-[#e8edf4]">
-            {closedMatches.length}
-          </span>
           경기
         </p>
         <p className="mt-0.5 text-[10px] text-[#8b9cb3] sm:mt-1 sm:text-xs">
-          경기 시작 시간이 지나면 예측이 마감됩니다. (현재 시각 기준 자동
-          판별)
+          경기 시작 시간(KST)이 지나면 예측 페이지에서 숨겨집니다.
         </p>
       </div>
 
@@ -276,18 +274,10 @@ export default function PredictionForm() {
         </div>
       ) : null}
 
-      {!readOnly && openCount === 0 ? (
-        <div className="rounded-lg border border-[#1e2a3a] bg-[#121820] px-3 py-2.5 text-xs text-[#8b9cb3] sm:rounded-xl sm:px-5 sm:py-4 sm:text-sm">
-          모든 경기가 예측 마감되었습니다. 마감 전에 제출하지 않은 경기는
-          예측할 수 없습니다.
-        </div>
-      ) : null}
-
       <ul className="space-y-2 sm:space-y-4">
-        {matches.map((match) => {
+        {openMatches.map((match) => {
           const pick = picks[match.id];
-          const closed = isMatchClosed(match.scheduledAt, now);
-          const showReadOnly = readOnly || closed;
+          const showReadOnly = readOnly;
 
           return (
             <li
@@ -299,11 +289,7 @@ export default function PredictionForm() {
                 <span className="text-xs text-[#8b9cb3]">
                   {formatMatchDate(match.scheduledAt)}
                 </span>
-                {closed ? (
-                  <span className="rounded-full border border-red-500/30 bg-red-500/10 px-2.5 py-0.5 text-xs font-medium text-red-400 sm:ml-auto">
-                    예측 마감
-                  </span>
-                ) : pick ? (
+                {pick ? (
                   <span className="rounded-full bg-[#00d4aa1a] px-2.5 py-0.5 text-xs font-medium text-[#00d4aa] sm:ml-auto">
                     선택 완료
                   </span>
@@ -351,12 +337,6 @@ export default function PredictionForm() {
                 awayTeam={match.awayTeam}
                 opinion={opinions[match.id]}
               />
-
-              {closed && !pick ? (
-                <p className="mt-1.5 hidden text-xs text-[#8b9cb3] sm:mt-3 sm:block">
-                  경기 시작 시간이 지나 예측할 수 없습니다.
-                </p>
-              ) : null}
             </li>
           );
         })}

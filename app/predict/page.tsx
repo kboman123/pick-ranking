@@ -13,8 +13,8 @@ export default function PredictPage() {
             예측하기
           </h1>
           <p className="mt-2 max-w-xl text-sm text-[#8b9cb3] sm:mt-3 sm:text-base">
-            경기 시작 시간 전까지 승자를 예측할 수 있습니다. 제출 후에는
-            조회만 가능합니다.
+            경기 시작 시간(KST) 전까지 승자를 예측할 수 있습니다. 시작된
+            경기는 결과 페이지에서 확인하세요.
           </p>
         </section>
 
